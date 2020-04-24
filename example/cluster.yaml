@@ -40,6 +40,8 @@ spec:
     nat: # NAT网关相关配置, 在VPC环境下构建一个公网流量的出入口
       natGateway: # NAT网关
         name: "cluster-api-ucloud-test" # NAT网关的名称
+      eip:
+        bandwidth: 20 # 单位 M
     ulb: # 负载均衡, 流量分发到apiserver
       loadBalancerName: "cluster-api-ucloud-test" # 负载均衡实例的名称
       eip:
