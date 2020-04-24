@@ -43,15 +43,6 @@ func (s *Service) GetZones() ([]string, error) {
 	return zones, nil
 }
 
-// GetDefaultImageID gets the ID of the image to use for the provided version of Kubernetes.
-func (s *Service) GetDefaultImageID(k8sVersion string) (string, error) {
-	imageId, ok := common.RegionImageMap[s.scope.Region()]
-	if !ok {
-		return "", errors.Errorf("k8sVersion %s is not supported in region %s", k8sVersion, s.scope.Region())
-	}
-	return imageId, nil
-}
-
 func (s *Service) buildHTTPRequest(req request.Common) (*http.HttpRequest, error) {
 	query, err := request.ToQueryMap(req)
 	if err != nil {

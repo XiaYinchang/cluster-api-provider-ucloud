@@ -65,12 +65,6 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*uhost.UHostInstanc
 		return nil, errors.Wrap(err, "failed to retrieve bootstrap data")
 	}
 
-	imageId := s.getImageId(scope)
-	if imageId == "" {
-		record.Warnf(scope.Machine, "FailedCreate", "Failed to create instance")
-		return nil, errors.Errorf("can not get image id for region %s", s.scope.Region())
-	}
-	s.scope.Info("use image", "imageid", imageId)
 	req := s.uhostClient.NewCreateUHostInstanceRequest()
 	req.Region = ucloud.String(s.scope.Region())
 	req.ProjectId = ucloud.String(s.scope.ProjectId())
@@ -84,6 +78,12 @@ func (s *Service) CreateInstance(scope *scope.MachineScope) (*uhost.UHostInstanc
 		}
 		req.Zone = ucloud.String(zones[rand.Intn(len(zones))])
 	}
+	imageId := s.getImageId(scope, ucloud.StringValue(req.Zone))
+	if imageId == "" {
+		record.Warnf(scope.Machine, "FailedCreate", "Failed to create instance")
+		return nil, errors.Errorf("can not get image id for region %s", s.scope.Region())
+	}
+	s.scope.Info("use image", "imageid", imageId)
 	if scope.UCloudMachine.Name != "" {
 		req.Name = ucloud.String(scope.UCloudCluster.Namespace + "-" + scope.UCloudMachine.Name)
 	} else {
@@ -205,11 +205,11 @@ func (s *Service) TerminateInstanceAndWait(scope *scope.MachineScope) error {
 }
 
 // getImageId computes the UHost image id to use as the boot disk
-func (s *Service) getImageId(scope *scope.MachineScope) string {
+func (s *Service) getImageId(scope *scope.MachineScope, zone string) string {
 	if scope.UCloudMachine.Spec.ImageId != nil {
 		return *scope.UCloudMachine.Spec.ImageId
 	} else {
-		return common.RegionImageMap[s.scope.Region()]
+		return common.RegionImageMap[s.scope.Region()][zone]
 	}
 }
 
@@ -236,13 +236,6 @@ func (s *Service) CreateBastionInstance() error {
 			return nil
 		}
 	}
-
-	imageId := common.RegionImageMap[s.scope.Region()]
-	if imageId == "" {
-		record.Warnf(s.scope.UCloudCluster, "FailedCreate", "Failed to create instance")
-		return errors.Errorf("can not get image id for region %s", s.scope.Region())
-	}
-	s.scope.Info("use image", "imageid", imageId)
 	req := s.uhostClient.NewCreateUHostInstanceRequest()
 	req.Region = ucloud.String(s.scope.Region())
 	req.ProjectId = ucloud.String(s.scope.ProjectId())
@@ -256,6 +249,12 @@ func (s *Service) CreateBastionInstance() error {
 		}
 		req.Zone = ucloud.String(zones[rand.Intn(len(zones))])
 	}
+	imageId := common.RegionImageMap[s.scope.Region()][ucloud.StringValue(req.Zone)]
+	if imageId == "" {
+		record.Warnf(s.scope.UCloudCluster, "FailedCreate", "Failed to create instance")
+		return errors.Errorf("can not get image id for region %s", s.scope.Region())
+	}
+	s.scope.Info("use image", "imageid", imageId)
 	req.Name = ucloud.String(bastionName)
 	req.ChargeType = ucloud.String("Month")
 	req.Quantity = ucloud.Int(1)
