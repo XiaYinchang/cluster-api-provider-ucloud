@@ -1,0 +1,14 @@
+{
+  "name": "ucloud",
+  "config": {
+    "image": "uhub.service.ucloud.cn/wxyz/cluster-api-ucloud-controller",
+    "live_reload_deps": [
+      "main.go",
+      "go.mod",
+      "go.sum",
+      "api",
+      "cloud",
+      "controllers"
+    ]
+  }
+}

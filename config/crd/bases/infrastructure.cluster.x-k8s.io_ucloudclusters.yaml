@@ -1,0 +1,461 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.6
+  creationTimestamp: null
+  name: ucloudclusters.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: UCloudCluster
+    listKind: UCloudClusterList
+    plural: ucloudclusters
+    singular: ucloudcluster
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Cluster to which this UCloudCluster belongs
+      jsonPath: .metadata.labels.cluster\.x-k8s\.io/cluster-name
+      name: Cluster
+      type: string
+    - description: Cluster infrastructure is ready for UCloud instances
+      jsonPath: .status.ready
+      name: Ready
+      type: string
+    - description: UCLOUD network the cluster is using
+      jsonPath: .spec.network.name
+      name: Network
+      type: string
+    - description: API Endpoint
+      jsonPath: .status.apiEndpoints[0]
+      name: Endpoint
+      priority: 1
+      type: string
+    name: v1alpha3
+    schema:
+      openAPIV3Schema:
+        description: UCloudCluster is the Schema for the ucloudclusters API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: UCloudClusterSpec defines the desired state of UCloudCluster
+            properties:
+              bastion:
+                description: Bastion
+                properties:
+                  sshPassword:
+                    description: SSHPassword should be base64 encoded
+                    type: string
+                  zone:
+                    description: Zone if not set, will choose a zone randomly in region
+                    type: string
+                type: object
+              controlPlaneEndpoint:
+                description: ControlPlaneEndpoint represents the endpoint used to
+                  communicate with the control plane.
+                properties:
+                  host:
+                    description: The hostname on which the API server is serving.
+                    type: string
+                  port:
+                    description: The port on which the API server is serving.
+                    format: int32
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
+              network:
+                description: NetworkSpec encapsulates all things related to UCLOUD
+                  network.
+                properties:
+                  firewall:
+                    description: FirewallSpec 防火墙
+                    properties:
+                      description:
+                        description: 防火墙描述信息。
+                        type: string
+                      firewallId:
+                        description: 使用一个已经存在的防火墙
+                        type: string
+                      firewallName:
+                        description: 防火墙名称。
+                        type: string
+                      rules:
+                        description: 防火墙入方向规则
+                        items:
+                          description: FirewallRuleSpec 防火墙入方向规则 详细文档见 [AuthorizeFirewall]
+                          properties:
+                            description:
+                              description: 安全组规则的描述信息。长度为1~512个字符
+                              type: string
+                            destCidrIp:
+                              description: 目的端IP地址范围。支持CIDR格式和IPv4格式的IP地址范围。   默认值：0.0.0.0/0。
+                              type: string
+                            ipProtocol:
+                              description: 传输层协议。不区分大小写。取值范围：   icmp   gre   tcp   udp   all：支持所有协议
+                              type: string
+                            policy:
+                              description: 访问权限。取值范围：   accept：接受访问。   drop：拒绝访问，不返回拒绝信息。   默认值：accept。
+                              type: string
+                            portRange:
+                              description: 目的端安全组开放的传输层协议相关的端口范围。取值范围：   TCP/UDP协议：取值范围为1~65535。使用斜线（/）隔开起始端口和终止端口。正确示范：1/200；错误示范：200/1。   ICMP协议：-1/-1。   GRE协议：-1/-1。   all：-1/-1。
+                              type: string
+                            sourceCidrIp:
+                              description: 源端IP地址范围。支持CIDR格式和IPv4格式的IP地址范围。   默认值：0.0.0.0/0。
+                              type: string
+                            sourcePortRange:
+                              description: 源端IPv6 CIDR地址段。支持CIDR格式和IPv6格式的IP地址范围。   仅支持VPC类型的IP地址。   默认值：无。
+                              type: string
+                          type: object
+                        type: array
+                    type: object
+                  nat:
+                    description: NatSpec NAT网关相关配置, 在VPC环境下构建一个公网流量的出入口
+                    properties:
+                      eip:
+                        description: EIPSpec 弹性公网IP 配置DNAT或SNAT功能前，需要为已创建的NAT网关绑定弹性公网IP
+                        properties:
+                          bandwidth:
+                            description: EIP的带宽峰值，单位为Mbps，默认值为5。
+                            type: integer
+                          eipId:
+                            description: 使用一个已经存在的弹性公网IP
+                            type: string
+                          eipName:
+                            type: string
+                        type: object
+                      natGateway:
+                        description: NAT网
+                        properties:
+                          description:
+                            description: NAT网关的描述。
+                            type: string
+                          name:
+                            description: NAT网关的名称
+                            type: string
+                          natGatewayId:
+                            description: 使用一个已经存在的NAT网关
+                            type: string
+                        type: object
+                    type: object
+                  subnet:
+                    properties:
+                      cidrBlock:
+                        description: 子网的网段。子网网段要求如下：   子网网段的掩码长度范围为16-29位。   子网的网段必须从属于所在VPC的网段。   子网的网段不能与所在VPC中路由条目的目标网段相同，但可以是目标网段的子集。   如果子网的网段与所在VPC的网段相同时，VPC只能有一个子网。
+                        type: string
+                      description:
+                        description: 子网的描述信息。
+                        type: string
+                      subnetId:
+                        description: 使用一个已经存在的 Subnet
+                        type: string
+                      subnetName:
+                        description: 子网的名称。
+                        type: string
+                    type: object
+                  ulb:
+                    description: ULBSpec 负载均衡（Server Load Balancer）是对多台云服务器进行流量分发的负载均衡服务,
+                      流量分发到apiserver
+                    properties:
+                      eip:
+                        description: ULB 绑定的 EIP 信息
+                        properties:
+                          bandwidth:
+                            description: EIP的带宽峰值，单位为Mbps，默认值为5。
+                            type: integer
+                          eipId:
+                            description: 使用一个已经存在的弹性公网IP
+                            type: string
+                          eipName:
+                            type: string
+                        type: object
+                      loadBalancerId:
+                        description: 使用一个已经存在的负载均衡
+                        type: string
+                      loadBalancerName:
+                        description: 负载均衡实例的名称。
+                        type: string
+                      vserverId:
+                        description: 使用一个已经存在的后端服务器组
+                        type: string
+                      vserverName:
+                        description: 后端服务器组名
+                        type: string
+                    type: object
+                  vpc:
+                    description: VPCSpec 专有网络 使用云资源前, 必须先创建一个专有网络和子网
+                    properties:
+                      cidrBlock:
+                        description: VPC的网段。您可以使用以下网段或其子集：   10.0.0.0/8   172.16.0.0/12   192.168.0.0/16
+                        type: string
+                      description:
+                        description: VPC的描述信息。
+                        type: string
+                      vpcId:
+                        description: 使用一个已经存在的VPC
+                        type: string
+                      vpcName:
+                        description: 专有网络名称。
+                        type: string
+                    type: object
+                type: object
+              projectId:
+                description: Project is the name of the project to deploy the cluster
+                  to.
+                type: string
+              region:
+                description: The UCLOUD Region the cluster lives in.
+                type: string
+              version:
+                description: Version k8s version
+                type: string
+            required:
+            - network
+            - projectId
+            - region
+            - version
+            type: object
+          status:
+            description: UCloudClusterStatus defines the observed state of UCloudCluster
+            properties:
+              bastion:
+                description: Bastion
+                properties:
+                  instanceId:
+                    type: string
+                  instanceType:
+                    type: string
+                  privateIP:
+                    type: string
+                  publicIP:
+                    type: string
+                  zone:
+                    type: string
+                type: object
+              clusterId:
+                description: ClusterId generated by uk8s server
+                type: string
+              failureDomains:
+                additionalProperties:
+                  description: FailureDomainSpec is the Schema for Cluster API failure
+                    domains. It allows controllers to understand how many failure
+                    domains a cluster can optionally span across.
+                  properties:
+                    attributes:
+                      additionalProperties:
+                        type: string
+                      description: Attributes is a free form map of attributes an
+                        infrastructure provider might use or require.
+                      type: object
+                    controlPlane:
+                      description: ControlPlane determines if this failure domain
+                        is suitable for use by control plane machines.
+                      type: boolean
+                  type: object
+                description: FailureDomains is a slice of FailureDomains.
+                type: object
+              group:
+                properties:
+                  groupId:
+                    description: GroupId
+                    type: string
+                  groupName:
+                    description: GroupName
+                    type: string
+                type: object
+              network:
+                properties:
+                  firewall:
+                    properties:
+                      creationTime:
+                        type: string
+                      description:
+                        type: string
+                      firewallId:
+                        type: string
+                      firewallName:
+                        type: string
+                      firewallType:
+                        type: string
+                      vpcId:
+                        type: string
+                    type: object
+                  nat:
+                    properties:
+                      creationTime:
+                        type: string
+                      description:
+                        type: string
+                      eip:
+                        properties:
+                          bandwidth:
+                            type: integer
+                          chargeType:
+                            type: string
+                          descritpion:
+                            type: string
+                          eipAddr:
+                            type: string
+                          eipId:
+                            type: string
+                          eipName:
+                            type: string
+                          mode:
+                            type: string
+                          status:
+                            type: string
+                        type: object
+                      firewall:
+                        properties:
+                          creationTime:
+                            type: string
+                          description:
+                            type: string
+                          firewallId:
+                            type: string
+                          firewallName:
+                            type: string
+                          firewallType:
+                            type: string
+                          vpcId:
+                            type: string
+                        type: object
+                      name:
+                        type: string
+                      natGatewayId:
+                        type: string
+                      snatEntryId:
+                        type: string
+                      snatTableIds:
+                        properties:
+                          SnatTableId:
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - SnatTableId
+                        type: object
+                      status:
+                        type: string
+                      vpcId:
+                        type: string
+                    type: object
+                  subnet:
+                    properties:
+                      availableIpAddressCount:
+                        format: int64
+                        type: integer
+                      cidrBlock:
+                        type: string
+                      creationTime:
+                        type: string
+                      description:
+                        type: string
+                      isDefault:
+                        type: boolean
+                      networkAclId:
+                        type: string
+                      status:
+                        type: string
+                      subnetId:
+                        type: string
+                      subnetName:
+                        type: string
+                      vpcId:
+                        type: string
+                      zoneId:
+                        type: string
+                    type: object
+                  ulb:
+                    properties:
+                      address:
+                        type: string
+                      createTime:
+                        type: string
+                      eip:
+                        properties:
+                          bandwidth:
+                            type: integer
+                          chargeType:
+                            type: string
+                          descritpion:
+                            type: string
+                          eipAddr:
+                            type: string
+                          eipId:
+                            type: string
+                          eipName:
+                            type: string
+                          mode:
+                            type: string
+                          status:
+                            type: string
+                        type: object
+                      loadBalancerId:
+                        type: string
+                      loadBalancerName:
+                        type: string
+                      loadBalancerStatus:
+                        type: string
+                      networkType:
+                        type: string
+                      vpcId:
+                        type: string
+                      vserverId:
+                        type: string
+                    type: object
+                  vpc:
+                    properties:
+                      cidrBlock:
+                        type: string
+                      creationTime:
+                        type: string
+                      description:
+                        type: string
+                      isDefault:
+                        type: boolean
+                      networkAclNum:
+                        type: string
+                      status:
+                        type: string
+                      vRouterId:
+                        type: string
+                      vpcId:
+                        type: string
+                      vpcName:
+                        type: string
+                    type: object
+                type: object
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

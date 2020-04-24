@@ -1,0 +1,107 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.6
+  creationTimestamp: null
+  name: ucloudmachinetemplates.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    categories:
+    - cluster-api
+    kind: UCloudMachineTemplate
+    listKind: UCloudMachineTemplateList
+    plural: ucloudmachinetemplates
+    singular: ucloudmachinetemplate
+  scope: Namespaced
+  versions:
+  - name: v1alpha3
+    schema:
+      openAPIV3Schema:
+        description: UCloudMachineTemplate is the Schema for the ucloudmachinetemplates
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: UCloudMachineTemplateSpec defines the desired state of UCloudMachineTemplate
+            properties:
+              template:
+                description: UCloudMachineTemplateResource describes the data needed
+                  to create am UCloudMachine from a template
+                properties:
+                  spec:
+                    description: Spec is the specification of the desired behavior
+                      of the machine.
+                    properties:
+                      additionalNetworkTags:
+                        description: AdditionalNetworkTags is a list of network tags
+                          that should be applied to the instance. These tags are set
+                          in addition to any network tags defined at the cluster level
+                          or in the actuator.
+                        items:
+                          type: string
+                        type: array
+                      cpu:
+                        description: CPU core number
+                        type: integer
+                      dataDiskSize:
+                        description: DataDiskSize
+                        type: integer
+                      imageId:
+                        description: ImageId is the full reference to a valid image
+                          to be used for this machine.
+                        type: string
+                      instanceType:
+                        description: 'InstanceType is the type of instance to create.
+                          Example: n1.standard-2'
+                        type: string
+                      memory:
+                        description: Memory
+                        type: integer
+                      providerID:
+                        description: ProviderID is the unique identifier as specified
+                          by the cloud provider.
+                        type: string
+                      publicIP:
+                        description: PublicIP specifies whether the instance should
+                          get a public IP. Set this to true if you don't have a NAT
+                          instances or Cloud Nat setup.
+                        type: boolean
+                      rootDiskSize:
+                        description: RootDiskSize
+                        type: integer
+                      sshPassword:
+                        description: SSHPassword should be base64 encoded
+                        type: string
+                    required:
+                    - instanceType
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
