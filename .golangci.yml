@@ -1,0 +1,23 @@
+linters:
+  enable-all: true
+  disable:
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - lll
+    - godox
+    - wsl
+    - gocognit
+    - gomnd
+  fast: false
+issues:
+  max-same-issues: 0
+  max-per-linter: 0
+  # List of regexps of issue texts to exclude, empty list by default.
+  exclude:
+    - Using the variable on range scope `(tc)|(rt)|(tt)|(test)|(testcase)|(testCase)` in function literal
+    - "G108: Profiling endpoint is automatically exposed on /debug/pprof"
+run:
+  timeout: 6m
+  skip-files:
+    - "zz_generated.*\\.go$"

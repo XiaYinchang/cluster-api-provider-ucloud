@@ -1,0 +1,171 @@
+---
+apiVersion: cluster.x-k8s.io/v1alpha3
+kind: Cluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.244.0.0/16
+          # - 10.23.0.0/16
+    serviceDomain: cluster.local
+    services:
+      cidrBlocks:
+        - 172.17.0.0/16
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    kind: UCloudCluster
+    name: ${CLUSTER_NAME}
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    name: ${CLUSTER_NAME}-control-plane
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: UCloudCluster
+metadata:
+  name: ${CLUSTER_NAME}
+spec:
+  projectId: "${UCLOUD_PROJECT_ID}" # 项目，替换为你的项目 id
+  region: "${UCLOUD_REGION}" # 地域，替换为目标地域
+  version: "${KUBERNETES_VERSION}" # 支持 1.13.0 及以上版本，注意与节点模板中配置的版本信息保持一致
+  network: # 网络配置
+    vpc: # 专有网络, 替换为你的 vpc
+      # vpcId: "uvnet-4qubgkcu"
+      cidrBlock: "10.128.0.0/9"
+    subnet: # 子网，替换为你的子网
+      # subnetId: "subnet-te302qk2"
+      cidrBlock: "10.128.0.0/16"
+    nat: # NAT网关相关配置, 在VPC环境下构建一个公网流量的出入口
+      natGateway: # NAT网关
+        name: "cluster-api-ucloud-${CLUSTER_NAME}" # NAT网关的名称
+    ulb: # 负载均衡, 流量分发到apiserver
+      loadBalancerName: "cluster-api-ucloud-${CLUSTER_NAME}" # 负载均衡实例的名称
+      eip:
+        bandwidth: 20 # 单位 M
+    # firewall: # 防火墙
+    #   firewallId: "firewall-jdnzfcuz"
+  bastion: # 跳板机
+    sshPassword: "${SSH_PASSWORD}" #替换为经过 base64 编码的跳板机登录密码
+---
+kind: KubeadmControlPlane
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  replicas: 3
+  version: "${KUBERNETES_VERSION}" #注意与集群中的版本信息保持一致
+  infrastructureTemplate:
+    kind: UCloudMachineTemplate
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    name: "${CLUSTER_NAME}-control-plane"
+  kubeadmConfigSpec:
+    initConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          network-plugin: "cni"
+    clusterConfiguration:
+      imageRepository: registry.aliyuncs.com/google_containers
+      apiServer:
+        timeoutForControlPlane: 20m
+      # controllerManager:
+      #   extraArgs:
+      #     allocate-node-cidrs: "false"
+    joinConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          network-plugin: "cni"
+    preKubeadmCommands:
+      - bash -c /tmp/pre-kubeadm-bootstrap.sh
+    postKubeadmCommands:
+      - bash -c /tmp/post-kubeadm-bootstrap.sh
+    files:
+      - path: /tmp/pre-kubeadm-bootstrap.sh
+        owner: "root:root"
+        permissions: "0744"
+        content: |
+          #!/bin/bash
+          wget -P /tmp http://cluster-api.cn-bj.ufileos.com/cluster-api-uk8s-init.tar.gz
+          tar -zxvf /tmp/cluster-api-uk8s-init.tar.gz -C /usr/local/bin
+          # do not modify the following command, it will do some basic configuration for the cloudprovider-ucloud to work.
+          cluster-api-uk8s-init prepare --credential=UCLOUD_CREDENTIAL --node-role=master --k8s-version=KUBERNETES_VERSION --cloud-provider-version=20.04.22
+
+      - path: /tmp/post-kubeadm-bootstrap.sh
+        owner: "root:root"
+        permissions: "0744"
+        content: |
+          #!/bin/bash
+          cluster-api-uk8s-init clean --node-role=master
+
+---
+kind: UCloudMachineTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      instanceType: "uhost"
+      sshPassword: "${SSH_PASSWORD}" #替换为经过 base64 编码的登录密码
+---
+apiVersion: cluster.x-k8s.io/v1alpha3
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: 5
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/deployment-name: ${CLUSTER_NAME}
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/deployment-name: ${CLUSTER_NAME}
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      version: "${KUBERNETES_VERSION}" #注意与集群中的版本信息保持一致
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+          kind: KubeadmConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+        kind: UCloudMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: UCloudMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  template:
+    spec:
+      instanceType: "uhost"
+      sshPassword: "${SSH_PASSWORD}" #替换为经过 base64 编码的登录密码
+      # imageId: "uimage-ooewdu1u"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+kind: KubeadmConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            network-plugin: "cni"
+      preKubeadmCommands:
+        - bash -c /tmp/pre-kubeadm-bootstrap.sh
+      files:
+        - path: /tmp/pre-kubeadm-bootstrap.sh
+          owner: "root:root"
+          permissions: "0744"
+          content: |
+            #!/bin/bash
+            wget -P /tmp http://cluster-api.cn-bj.ufileos.com/cluster-api-uk8s-init.tar.gz
+            tar -zxvf /tmp/cluster-api-uk8s-init.tar.gz -C /usr/local/bin
+            cluster-api-uk8s-init prepare --credential=UCLOUD_CREDENTIAL --k8s-version=KUBERNETES_VERSION
